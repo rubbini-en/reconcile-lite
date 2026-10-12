@@ -10,3 +10,4 @@ coverage/
 .worktrees/
 .claude/
 .atl/
+AGENT_REPORT.md

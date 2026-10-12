@@ -45,18 +45,22 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 - **CSV amounts** are decimal strings in major units (`12.34`), converted to
   minor units by string parsing. Extra decimals are rejected, never rounded.
 
+- **Contract-violating refunds** (wrong currency, total above the settled
+  amount, a reused `refund_id` with other values, a second settlement) are
+  stored and flagged in `payments.anomalies`, never rejected or corrected.
+  Rejecting is only possible when the settlement arrived first, so the same
+  events would end in different states depending on arrival order.
+- **Agents do not commit.** Codex and Antigravity leave changes uncommitted in
+  their worktrees; the integrator reviews the diff, runs every check, and
+  commits in small units.
+
 ## Open questions
 
-1. **Refunds that break the contract.** The contract says refunds never exceed
-   the settled amount and use the payment's currency. If FakePay violates that,
-   should the event be rejected (`400`), or stored and reported as an exception?
-   Rejecting is not always possible: a refund can arrive before the settlement
-   it must be checked against. To decide in milestone 1.
-2. **Money type in TypeScript.** The plan said `bigint`. The contract caps
+1. **Money type in TypeScript.** The plan said `bigint`. The contract caps
    amounts at 2^53 − 1 because `JSON.parse` loses precision above it, so a
    validated safe-integer `number` is enough and avoids `bigint` JSON
    serialization problems. Proposed; needs owner OK.
-3. **Postgres image tag.** `postgres:17-alpine` is a floating tag. Pin to an
+2. **Postgres image tag.** `postgres:17-alpine` is a floating tag. Pin to an
    exact version or digest before CI.
 
 ## Process log
