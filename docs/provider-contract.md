@@ -44,7 +44,7 @@ the event. A retry hours after the event happened is still valid.
   "id": "evt_01J9Z3K8Q2",
   "type": "payment.settled",
   "occurred_at": "2026-10-12T14:03:00Z",
-  "data": { }
+  "data": {}
 }
 ```
 
@@ -88,13 +88,13 @@ Funds for a payment were captured. FakePay sends **at most one**
 }
 ```
 
-| Field           | Type           | Rules                                                                 |
-| --------------- | -------------- | --------------------------------------------------------------------- |
-| `payment_id`    | string         | FakePay payment ID. 1–64 chars.                                        |
-| `amount_minor`  | integer        | See [Money](#money).                                                   |
-| `currency`      | string         | See [Money](#money).                                                   |
+| Field           | Type           | Rules                                                                                                                |
+| --------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `payment_id`    | string         | FakePay payment ID. 1–64 chars.                                                                                      |
+| `amount_minor`  | integer        | See [Money](#money).                                                                                                 |
+| `currency`      | string         | See [Money](#money).                                                                                                 |
 | `reference`     | string \| null | Free text typed by the payer or merchant. May be missing, mistyped, or not an order reference at all. Max 128 chars. |
-| `customer_name` | string \| null | Free text as entered by the payer. Max 200 chars.                       |
+| `customer_name` | string \| null | Free text as entered by the payer. Max 200 chars.                                                                    |
 
 The settlement time is `occurred_at`.
 
@@ -116,26 +116,26 @@ Part or all of a settled payment was returned to the payer.
 }
 ```
 
-| Field          | Type    | Rules                                                     |
-| -------------- | ------- | --------------------------------------------------------- |
-| `payment_id`   | string  | The refunded payment.                                     |
-| `refund_id`    | string  | Unique per refund. 1–64 chars.                            |
-| `amount_minor` | integer | Amount of **this** refund (incremental, not cumulative).  |
-| `currency`     | string  | Same currency as the payment.                             |
+| Field          | Type    | Rules                                                    |
+| -------------- | ------- | -------------------------------------------------------- |
+| `payment_id`   | string  | The refunded payment.                                    |
+| `refund_id`    | string  | Unique per refund. 1–64 chars.                           |
+| `amount_minor` | integer | Amount of **this** refund (incremental, not cumulative). |
+| `currency`     | string  | Same currency as the payment.                            |
 
 A payment may have several refunds. Their sum never exceeds the settled
 amount. Two events carrying the same `refund_id` describe the same refund.
 
 ## Responses expected from the receiver
 
-| Situation                                              | Status |
-| ------------------------------------------------------ | ------ |
-| Event accepted (first delivery)                        | `200`  |
-| Event already received with an identical body          | `200`  |
+| Situation                                                | Status |
+| -------------------------------------------------------- | ------ |
+| Event accepted (first delivery)                          | `200`  |
+| Event already received with an identical body            | `200`  |
 | Signature missing, malformed, wrong, or out of tolerance | `401`  |
-| Body is not valid JSON or does not match this contract | `400`  |
-| Same `id` already received with a different body       | `409`  |
-| Receiver error                                         | `5xx`  |
+| Body is not valid JSON or does not match this contract   | `400`  |
+| Same `id` already received with a different body         | `409`  |
+| Receiver error                                           | `5xx`  |
 
 ## Retries
 
