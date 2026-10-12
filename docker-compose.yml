@@ -1,0 +1,22 @@
+# Local development only. Credentials below are throwaway defaults for a
+# database bound to localhost; override them through .env.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reconcile}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reconcile_local}
+      POSTGRES_DB: ${POSTGRES_DB:-reconcile}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-54329}:5432"
+    volumes:
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:
