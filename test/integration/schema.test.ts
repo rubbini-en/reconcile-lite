@@ -96,6 +96,29 @@ describe("payments", () => {
     );
   });
 
+  it("defaults anomalies to empty and accepts known codes", async () => {
+    await pool.query(
+      `INSERT INTO payments (provider_payment_id, refunded_minor, anomalies)
+       VALUES ('pay_z', 900, '{refunds_exceed_amount,conflicting_refund}')`,
+    );
+    const { rows } = await pool.query<{ provider_payment_id: string; anomalies: string[] }>(
+      "SELECT provider_payment_id, anomalies FROM payments ORDER BY id",
+    );
+    expect(rows).toEqual([
+      { provider_payment_id: "pay_1", anomalies: [] },
+      { provider_payment_id: "pay_2", anomalies: [] },
+      { provider_payment_id: "pay_z", anomalies: ["refunds_exceed_amount", "conflicting_refund"] },
+    ]);
+  });
+
+  it("rejects unknown anomaly codes", async () => {
+    await expectRejected(
+      "INSERT INTO payments (provider_payment_id, anomalies) VALUES ('pay_w', '{made_up_code}')",
+      [],
+      CHECK_VIOLATION,
+    );
+  });
+
   it("rejects a negative refunded total", async () => {
     await expectRejected(
       "INSERT INTO payments (provider_payment_id, refunded_minor) VALUES ('pay_y', -1)",

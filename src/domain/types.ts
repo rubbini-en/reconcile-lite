@@ -20,6 +20,15 @@ export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
 export const MATCH_STAGES = ["exact_reference", "amount_time_window", "fuzzy"] as const;
 export type MatchStage = (typeof MATCH_STAGES)[number];
 
+/** Mirrors the payments_known_anomalies CHECK in migrations/002_payment_anomalies.sql. */
+export const PAYMENT_ANOMALIES = [
+  "multiple_settlements",
+  "conflicting_refund",
+  "refund_currency_mismatch",
+  "refunds_exceed_amount",
+] as const;
+export type PaymentAnomaly = (typeof PAYMENT_ANOMALIES)[number];
+
 export interface Order {
   id: OrderId;
   orderRef: string;
