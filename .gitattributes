@@ -1,0 +1,2 @@
+# Deliberately invalid UTF-8; git must never normalize its bytes.
+test/fixtures/orders-invalid-utf8.csv binary

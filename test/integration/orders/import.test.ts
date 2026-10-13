@@ -129,6 +129,18 @@ describe("npm run import:orders", () => {
     expect(await storedOrders()).toEqual([]);
   });
 
+  it("exits 1 with a clear message when the file cannot be read", async () => {
+    const result = await importCli("missing.csv");
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("Cannot read");
+    expect(result.stderr).not.toContain("    at ");
+  });
+
+  it("keeps the invalid byte in the UTF-8 fixture", async () => {
+    const { readFile } = await import("node:fs/promises");
+    expect((await readFile(fixture("orders-invalid-utf8.csv"))).includes(0xff)).toBe(true);
+  });
+
   it("rejects a file that is not valid UTF-8", async () => {
     const result = await importCli("orders-invalid-utf8.csv");
     expect(result.code).toBe(1);

@@ -59,6 +59,11 @@ describe("parseOrdersCsv", () => {
     ]);
   });
 
+  it("compares header fields one by one, not as joined text", () => {
+    const quoted = '"order_ref,customer_name",amount,currency,created_at\n';
+    expect(problemsOf(quoted)).toEqual([`line 1: header must be "${HEADER}"`]);
+  });
+
   it("requires at least one order", () => {
     expect(problemsOf(`${HEADER}\n`)).toEqual(["the file contains no orders"]);
     expect(problemsOf("")).toEqual([`line 1: header must be "${HEADER}"`]);

@@ -89,7 +89,10 @@ function readRecords(text: string): CsvRecord[] {
 
 export function parseOrdersCsv(text: string): NewOrder[] {
   const [header, ...rows] = readRecords(text);
-  if (header?.fields.join(",") !== ORDERS_CSV_HEADER.join(",")) {
+  const headerMatches =
+    header?.fields.length === ORDERS_CSV_HEADER.length &&
+    header.fields.every((field, index) => field === ORDERS_CSV_HEADER[index]);
+  if (!headerMatches) {
     throw new OrderImportError([`line 1: header must be "${ORDERS_CSV_HEADER.join(",")}"`]);
   }
   if (rows.length === 0) throw new OrderImportError(["the file contains no orders"]);

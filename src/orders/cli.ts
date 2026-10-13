@@ -18,7 +18,13 @@ if (!databaseUrl) {
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
 
 async function readOrders(path: string) {
-  const bytes = await readFile(path);
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(path);
+  } catch (error) {
+    const reason = error instanceof Error && "code" in error ? String(error.code) : "unknown error";
+    throw new OrderImportError([`Cannot read ${path} (${reason})`]);
+  }
   let text: string;
   try {
     text = strictUtf8.decode(bytes);
