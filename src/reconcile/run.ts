@@ -71,3 +71,12 @@ export async function runReconciliation({
     throw error;
   }
 }
+
+/** Plain-text summary for the CLI, one status per line in a fixed order. */
+export function formatSummary(summary: ReconcileSummary): string {
+  const lines = RECONCILIATION_STATUSES.map(
+    (status) => `  ${status.padEnd(16)}${String(summary.byStatus[status])}`,
+  );
+  const header = `Reconciled ${String(summary.total)} settled payments at ${summary.reconciledAt.toISOString()}`;
+  return [header, ...lines].join("\n");
+}
