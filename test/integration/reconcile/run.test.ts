@@ -199,6 +199,23 @@ describe("runReconciliation", () => {
     expect(await storedResults()).toEqual(EVERY_STATUS);
   });
 
+  it("restores the previous results when an insert fails after the delete", async () => {
+    await seedEveryStatus();
+    await runReconciliation({ pool, now: () => FIRST_RUN });
+    // Test-only trigger on the disposable test schema: fails the run after its
+    // DELETE has already removed the old rows inside the transaction.
+    await pool.query(`
+      CREATE FUNCTION reject_result_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'injected insert failure'; END $$;
+      CREATE TRIGGER reject_result_insert BEFORE INSERT ON reconciliation_results
+        FOR EACH ROW EXECUTE FUNCTION reject_result_insert();
+    `);
+    await expect(runReconciliation({ pool, now: () => SECOND_RUN })).rejects.toThrow(
+      /injected insert failure/,
+    );
+    expect(await storedResults()).toEqual(EVERY_STATUS);
+  });
+
   it("serializes concurrent runs", async () => {
     await seedEveryStatus();
     const runs = await Promise.all(
