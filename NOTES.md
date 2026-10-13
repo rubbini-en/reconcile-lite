@@ -64,6 +64,15 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 - **Mixed refund currencies before settlement** add `refund_currency_mismatch`.
   There is no settled currency yet, so `refunded_minor` still sums them (see
   open question 3).
+- **Matching never picks between equals.** Two orders whose references are
+  equal after trimming give `ambiguous` at the exact stage, and a tie for the
+  best fuzzy score gives `ambiguous` even when `fuzzyMinLead` is 0.
+- **Fuzzy scores** are compared in integer thousandths. A score equal to the
+  threshold is eligible; a lead equal to `fuzzyMinLead` picks the winner.
+  Boundary tests use real Jaro-Winkler values (`martha`/`marhta` = 0.961), not
+  mocked scores.
+- **A money mismatch beats `duplicate`** at the exact stage: a claimed order
+  with a different amount is reported as `amount_mismatch`.
 
 ## Open questions
 
@@ -81,6 +90,11 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 4. **`refunded_minor` above 2^53 − 1.** Postgres allows it (`BIGINT`) and many
    refunds could reach it; `minorUnitsFromDb` would then throw when the
    reconcile step loads the row. To handle in milestone 2.
+5. **Review suggestions on matching** (non-blocking, for the reconcile runner):
+   validate `MatchingConfig` ranges when loading it (threshold in 0..1, lead
+   ≥ 0); `compareNumericIds` throws on a non-numeric ID, which only database
+   IDs reach today; `normalizeText` removes marks before lowercasing, so a
+   letter like `İ` keeps a stray mark after lowercasing.
 
 ## Process log
 
@@ -99,3 +113,9 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   integrator applied it without changing any test assertion (only lint and type
   fixes in test files), and the review approved it. Antigravity stopped before
   `stages.ts`/`engine.ts`; the integrator finishes matching in milestone 2.
+- Milestone 2 (matching): the integrator finished Antigravity's work. Two
+  stage tests that could not fail (a boundary test scoring 1.0 and a test that
+  only checked a config constant) were replaced with real boundary tests, and a
+  prefix-cap test was tightened to an exact score. Mutation checks: flipping
+  each threshold, lead, window and tie rule, and the full-refund boundary,
+  made at least one test fail every time.
