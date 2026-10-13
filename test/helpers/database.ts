@@ -9,8 +9,12 @@ const DEFAULT_TEST_DATABASE_URL =
 
 export const MIGRATIONS_DIR = path.resolve(import.meta.dirname, "../../migrations");
 
+export function testDatabaseUrl(): string {
+  return process.env.TEST_DATABASE_URL ?? DEFAULT_TEST_DATABASE_URL;
+}
+
 export function createTestPool(): pg.Pool {
-  const url = process.env.TEST_DATABASE_URL ?? DEFAULT_TEST_DATABASE_URL;
+  const url = testDatabaseUrl();
   const databaseName = new URL(url).pathname.slice(1);
   // Reset drops every table, so refuse anything that is not a test database.
   if (!databaseName.endsWith("_test")) {

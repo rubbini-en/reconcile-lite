@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "tsx src/db/migrate-cli.ts",
+    "import:orders": "tsx src/orders/cli.ts",
     "reconcile": "tsx src/reconcile/cli.ts",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",

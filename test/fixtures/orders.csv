@@ -1,0 +1,4 @@
+order_ref,customer_name,amount,currency,created_at
+ORD-1001,María Benítez,150000,PYG,2026-10-10T12:00:00Z
+ORD-1002,"Acosta, Rodrigo",12.34,USD,2026-10-11T08:30:00Z
+ORD-1003,Ana Duarte,99000,PYG,2026-10-11T09:00:00Z
