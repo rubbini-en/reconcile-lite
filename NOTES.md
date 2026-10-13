@@ -83,6 +83,29 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   makes concurrent runs wait, so each reads what the previous one committed.
 - **Known limit:** a run loads every order and inserts results one row at a
   time. Fine for this project's scale; not measured on large data.
+- **Order import is all-or-nothing and repeatable.** Every row is validated
+  first and every problem is listed with its line number (names are never
+  echoed). Re-importing an identical order is a no-op; an existing `order_ref`
+  with different values aborts the whole import. The header must match
+  exactly, values are trimmed, NUL characters and invalid UTF-8 are rejected.
+- **Exceptions report:** one item per payment that needs a person — a status
+  other than `matched`, awaiting settlement, settled after the last run, a
+  partial refund, an anomaly, or an outdated result. The optional UTC day
+  filters by settlement time, or by first event for unsettled payments.
+- **Outdated results** compare the `payments.updated_at` a run read (stored in
+  `reconciliation_results.payment_updated_at`, migration 003) with the current
+  value. Comparing with the run time would mix the app and database clocks and
+  miss a webhook that committed after the run's snapshot.
+- **`GET /exceptions` requires a bearer token** (`REPORT_API_TOKEN`, owner
+  decision): it returns payer names and amounts. Tokens are compared as
+  SHA-256 digests in constant time; responses are `Cache-Control: no-store`.
+- **Report output is treated as untrusted text.** Markdown escapes table and
+  markup characters; CSV prefixes cells starting with `= + - @`, tab or CR
+  with an apostrophe so spreadsheets do not run them as formulas.
+- **Simulator** sends a fixed fictional scenario covering every outcome, in a
+  seeded random order with redeliveries and re-signed retries, and refuses any
+  URL that is not 127.0.0.1, localhost or [::1]. Its xorshift32 generator
+  (Marsaglia, 2003) is for shuffling only, never for anything security-related.
 
 ## Open questions
 
@@ -108,6 +131,12 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 6. **Reconcile lock wait is unbounded** (review suggestion). A second run waits
    for the first without a timeout. Options: `lock_timeout` for the run, or
    `pg_try_advisory_lock` and exit with "a run is already in progress".
+7. **Unpaid orders are not reported.** The report is payment-centred; orders no
+   payment matched do not appear. Add a section if that view is needed.
+8. **`.env.example` is still missing.** Writing it was blocked by a local
+   permission rule in Step 0; the owner needs to create it or allow the write.
+   Variables: `DATABASE_URL`, `FAKEPAY_WEBHOOK_SECRET`, `REPORT_API_TOKEN`,
+   `PORT`.
 
 ## Process log
 
@@ -137,3 +166,11 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   the concurrency test 3/3; removing the delete, the 2^53 cap, or the
   settlement sort each failed their own tests. The CLI was run once against
   `reconcile_test` with 4 fictional payments.
+
+- Milestone 3: import, report, API and simulator written by the integrator,
+  test-first except the CSV reader (its tests were written first but not run
+  before the code). Reviews found and fixed: a header check that joined
+  fields, an outdated-result check that compared two clocks, and simulator
+  network errors that aborted the run. A full local run (server, simulate,
+  import twice, reconcile, report, API with and without the token) was done
+  against `reconcile_test`; the server log contained neither secret.
