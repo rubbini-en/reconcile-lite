@@ -104,9 +104,12 @@ export async function replaceResults(
   for (const { paymentId, decision } of decisions) {
     const columns = resultColumns(decision);
     await client.query(
+      // payment_updated_at is read in the run's snapshot: the version it reconciled.
       `INSERT INTO reconciliation_results
-         (payment_id, status, order_id, stage, confidence, candidate_order_ids, reconciled_at)
-       VALUES ($1, $2, $3, $4, $5, $6::bigint[], $7)`,
+         (payment_id, status, order_id, stage, confidence, candidate_order_ids, reconciled_at,
+          payment_updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6::bigint[], $7,
+               (SELECT updated_at FROM payments WHERE id = $1))`,
       [
         paymentId,
         decision.status,

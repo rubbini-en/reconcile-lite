@@ -23,7 +23,7 @@ interface PaymentReportRow {
   confidence: string | null;
   order_ref: string | null;
   candidate_order_refs: string[];
-  result_outdated: boolean | null;
+  result_outdated: boolean;
 }
 
 // A payment's day is its settlement time or, before settlement, the time of
@@ -47,7 +47,8 @@ const PAYMENTS_QUERY = `
            JOIN orders c ON c.id = candidate.id
            ORDER BY candidate.position
          ) AS candidate_order_refs,
-         p.updated_at > r.reconciled_at AS result_outdated
+         (r.payment_id IS NOT NULL
+          AND p.updated_at IS DISTINCT FROM r.payment_updated_at) AS result_outdated
   FROM dated_payments p
   LEFT JOIN reconciliation_results r ON r.payment_id = p.id
   LEFT JOIN orders o ON o.id = r.order_id
@@ -77,7 +78,7 @@ function toItem(row: PaymentReportRow): ExceptionItem {
     candidateOrderRefs: row.candidate_order_refs,
     partialRefund: amountMinor !== null && refunded > 0n && refunded < BigInt(amountMinor),
     anomalies: row.anomalies,
-    resultOutdated: row.result_outdated === true,
+    resultOutdated: row.result_outdated,
   };
 }
 

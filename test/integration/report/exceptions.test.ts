@@ -204,6 +204,18 @@ describe("loadExceptionReport", () => {
     expect(eleventh.items).toEqual([UNMATCHED]);
   });
 
+  it("compares the payment with the version the run saw, not with the run time", async () => {
+    await insertOrder("ORD-1001", "Ana Duarte", 150000);
+    await insertPayment("pay_skewed", { reference: "ORD-1001" });
+    // A database clock ahead of the app clock: updated_at is after the run time,
+    // yet the payment has not changed since the run read it.
+    await pool.query(
+      "UPDATE payments SET updated_at = '2030-01-01T00:00:00Z' WHERE provider_payment_id = 'pay_skewed'",
+    );
+    await runReconciliation({ pool, now: () => RUN_AT });
+    expect((await loadExceptionReport({ pool })).items).toEqual([]);
+  });
+
   it("returns an empty report before any reconcile run", async () => {
     expect(await loadExceptionReport({ pool, now: () => GENERATED_AT })).toEqual({
       generatedAt: GENERATED_AT,

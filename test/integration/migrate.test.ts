@@ -31,7 +31,11 @@ describe("migrate", () => {
     const { rows: applied } = await pool.query<{ name: string }>(
       "SELECT name FROM schema_migrations ORDER BY name",
     );
-    expect(applied.map((row) => row.name)).toEqual(["001_init.sql", "002_payment_anomalies.sql"]);
+    expect(applied.map((row) => row.name)).toEqual([
+      "001_init.sql",
+      "002_payment_anomalies.sql",
+      "003_result_payment_version.sql",
+    ]);
   });
 
   it("applies nothing when the schema is already up to date", async () => {
@@ -46,6 +50,10 @@ describe("migrate", () => {
       migrate(pool, MIGRATIONS_DIR),
       migrate(pool, MIGRATIONS_DIR),
     ]);
-    expect(results.flat()).toEqual(["001_init.sql", "002_payment_anomalies.sql"]);
+    expect(results.flat()).toEqual([
+      "001_init.sql",
+      "002_payment_anomalies.sql",
+      "003_result_payment_version.sql",
+    ]);
   });
 });
