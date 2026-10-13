@@ -86,6 +86,8 @@ describe("formatMinorUnits", () => {
     expect(formatMinorUnits(1234, "USD")).toBe("12.34 USD");
     expect(formatMinorUnits(5, "USD")).toBe("0.05 USD");
     expect(formatMinorUnits(1200, "USD")).toBe("12.00 USD");
+    expect(formatMinorUnits(9007199254740993n, "USD")).toBe("90071992547409.93 USD");
+    expect(formatMinorUnits(0n, "USD")).toBe("0.00 USD");
   });
 
   it("round-trips with parseDecimalAmount", () => {
