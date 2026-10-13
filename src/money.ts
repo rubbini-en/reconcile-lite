@@ -80,17 +80,18 @@ export function minorUnitsFromDb(text: string): number {
   return Number(text);
 }
 
+/** Formats minor units as a decimal number without the currency, e.g. "12.34". */
+export function formatDecimalAmount(minorUnits: number | bigint, currency: CurrencyCode): string {
+  const exponent = currencyExponent(currency);
+  if (exponent === 0) return String(minorUnits);
+  const digits = String(minorUnits).padStart(exponent + 1, "0");
+  return `${digits.slice(0, -exponent)}.${digits.slice(-exponent)}`;
+}
+
 /**
  * Formats minor units as a plain decimal string, e.g. "12.34 USD". Accepts
  * bigint for stored totals that may exceed 2^53 − 1.
  */
 export function formatMinorUnits(minorUnits: number | bigint, currency: CurrencyCode): string {
-  const exponent = currencyExponent(currency);
-  if (exponent === 0) {
-    return `${String(minorUnits)} ${currency}`;
-  }
-  const digits = String(minorUnits).padStart(exponent + 1, "0");
-  const whole = digits.slice(0, -exponent);
-  const fraction = digits.slice(-exponent);
-  return `${whole}.${fraction} ${currency}`;
+  return `${formatDecimalAmount(minorUnits, currency)} ${currency}`;
 }

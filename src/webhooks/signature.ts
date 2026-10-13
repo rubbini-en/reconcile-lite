@@ -3,6 +3,13 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 /** Provider contract: deliveries older or newer than this are rejected (inclusive). */
 const SIGNATURE_TOLERANCE_SECONDS = 300;
 
+/** Builds a FakePay-Signature header for one delivery attempt (used by the simulator). */
+export function signatureHeader(rawBody: Buffer, secret: string, timestampSeconds: number): string {
+  const timestamp = String(timestampSeconds);
+  const digest = createHmac("sha256", secret).update(`${timestamp}.`).update(rawBody).digest("hex");
+  return `t=${timestamp},v1=${digest}`;
+}
+
 type SignatureResult =
   { ok: true } | { ok: false; reason: "missing" | "malformed" | "mismatch" | "expired" };
 
