@@ -2,6 +2,15 @@ import { createHmac } from "node:crypto";
 import type { CurrencyCode } from "../../src/money.js";
 
 export const TEST_SECRET = "fictional-fakepay-test-secret-123456789";
+export const TEST_REPORT_TOKEN = "fictional-report-api-token-1234567890";
+
+/** App config for tests that build the app without a real environment. */
+export const TEST_CONFIG = {
+  databaseUrl: "postgres://unused",
+  fakepayWebhookSecret: TEST_SECRET,
+  reportApiToken: TEST_REPORT_TOKEN,
+  port: 3000,
+};
 export const NOW_SECONDS = 1_791_811_800;
 
 interface EventOptions {

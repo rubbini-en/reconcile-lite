@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type pg from "pg";
 import { buildApp } from "../../../src/app.js";
-import { NOW_SECONDS, settled, sign, TEST_SECRET } from "../../helpers/fakepay.js";
+import { NOW_SECONDS, settled, sign, TEST_CONFIG, TEST_SECRET } from "../../helpers/fakepay.js";
 
 const apps: FastifyInstance[] = [];
 afterEach(async () => {
@@ -16,7 +16,7 @@ function setup() {
   });
   const app = buildApp({
     pool: { connect } as unknown as pg.Pool,
-    config: { databaseUrl: "postgres://unused", fakepayWebhookSecret: TEST_SECRET, port: 3000 },
+    config: TEST_CONFIG,
     now: () => NOW_SECONDS,
     logger: false,
   });
@@ -134,7 +134,7 @@ describe("webhook HTTP rejection", () => {
           throw failure;
         }),
       } as unknown as pg.Pool,
-      config: { databaseUrl: "postgres://unused", fakepayWebhookSecret: TEST_SECRET, port: 3000 },
+      config: TEST_CONFIG,
       now: () => NOW_SECONDS,
       logger: { stream },
     });

@@ -4,7 +4,7 @@ import type pg from "pg";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../../src/app.js";
 import { createTestPool, resetDatabase } from "../../helpers/database.js";
-import { NOW_SECONDS, refunded, settled, sign, TEST_SECRET } from "../../helpers/fakepay.js";
+import { NOW_SECONDS, refunded, settled, sign, TEST_CONFIG } from "../../helpers/fakepay.js";
 
 type TestEvent = ReturnType<typeof settled> | ReturnType<typeof refunded>;
 let pool: pg.Pool;
@@ -14,7 +14,7 @@ beforeAll(() => {
   pool = createTestPool();
   app = buildApp({
     pool,
-    config: { databaseUrl: "postgres://unused", fakepayWebhookSecret: TEST_SECRET, port: 3000 },
+    config: TEST_CONFIG,
     now: () => NOW_SECONDS,
     logger: false,
   });

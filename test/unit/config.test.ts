@@ -4,6 +4,7 @@ import { ConfigError, loadConfig } from "../../src/config.js";
 const validEnv = {
   DATABASE_URL: "postgres://user:pass@127.0.0.1:54329/reconcile",
   FAKEPAY_WEBHOOK_SECRET: "a".repeat(32),
+  REPORT_API_TOKEN: "r".repeat(32),
   PORT: "3000",
 };
 
@@ -12,6 +13,7 @@ describe("loadConfig", () => {
     expect(loadConfig(validEnv)).toEqual({
       databaseUrl: validEnv.DATABASE_URL,
       fakepayWebhookSecret: validEnv.FAKEPAY_WEBHOOK_SECRET,
+      reportApiToken: validEnv.REPORT_API_TOKEN,
       port: 3000,
     });
   });
@@ -24,6 +26,14 @@ describe("loadConfig", () => {
   it("fails naming the missing variable", () => {
     const { FAKEPAY_WEBHOOK_SECRET: _omitted, ...env } = validEnv;
     expect(() => loadConfig(env)).toThrow(/FAKEPAY_WEBHOOK_SECRET/);
+  });
+
+  it("requires a report API token of at least 32 characters", () => {
+    const { REPORT_API_TOKEN: _omitted, ...env } = validEnv;
+    expect(() => loadConfig(env)).toThrow(/REPORT_API_TOKEN/);
+    expect(() => loadConfig({ ...validEnv, REPORT_API_TOKEN: "short" })).toThrow(
+      /REPORT_API_TOKEN: must be at least 32 characters/,
+    );
   });
 
   it("rejects a webhook secret shorter than 32 characters", () => {
@@ -42,5 +52,9 @@ describe("loadConfig", () => {
     } catch (error) {
       expect(String(error)).not.toContain(secret);
     }
+    const token = "leaky-token";
+    expect(() => loadConfig({ ...validEnv, REPORT_API_TOKEN: token })).toThrow(
+      expect.objectContaining({ message: expect.not.stringContaining(token) as unknown }),
+    );
   });
 });
