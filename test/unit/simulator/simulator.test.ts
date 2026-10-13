@@ -176,6 +176,35 @@ describe("deliverEvents", () => {
     });
   });
 
+  it("retries a network error like any failed attempt", async () => {
+    const fetch = vi
+      .fn((_url: string, _init: RequestInit) => Promise.resolve(response(200)))
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
+    const summary = await deliverEvents(events.slice(0, 1), { ...base, fetch });
+    expect(summary).toEqual({
+      deliveries: 1,
+      attempts: 2,
+      byStatus: { processed: 1 },
+      failedEventIds: [],
+    });
+  });
+
+  it("reports a network error that outlasts every attempt and keeps going", async () => {
+    const fetch = vi.fn((_url: string, _init: RequestInit) =>
+      Promise.reject(new TypeError("fetch failed")),
+    );
+    const summary = await deliverEvents(events.slice(0, 2), { ...base, maxAttempts: 2, fetch });
+    expect({ ...summary, failedEventIds: [...summary.failedEventIds].sort() }).toEqual({
+      deliveries: 2,
+      attempts: 4,
+      byStatus: { "network error": 2 },
+      failedEventIds: events
+        .slice(0, 2)
+        .map((event) => event.id)
+        .sort(),
+    });
+  });
+
   it("refuses a non-loopback URL before sending anything", async () => {
     const fetch = vi.fn();
     await expect(

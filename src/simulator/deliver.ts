@@ -12,7 +12,7 @@ export interface DeliveryOptions {
   /** Extra deliveries of randomly chosen events, as an at-least-once provider would make. */
   redeliveries?: number;
   maxAttempts?: number;
-  fetch?: (url: string, init: RequestInit) => Promise<Response>;
+  fetch?: Send;
   nowSeconds?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
 }
@@ -50,6 +50,30 @@ async function responseStatus(response: Response): Promise<string> {
   }
 }
 
+type Send = (url: string, init: RequestInit) => Promise<Response>;
+
+/** One POST. A network failure (the app is down, a reset) is a failed attempt, not a crash. */
+async function attempt(
+  send: Send,
+  url: string,
+  body: string,
+  signature: string,
+): Promise<{ ok: boolean; status: string }> {
+  let response: Response;
+  try {
+    response = await send(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", "fakepay-signature": signature },
+      body,
+    });
+  } catch {
+    return { ok: false, status: "network error" };
+  }
+  return response.ok
+    ? { ok: true, status: await responseStatus(response) }
+    : { ok: false, status: `http ${String(response.status)}` };
+}
+
 export async function deliverEvents(
   events: readonly FakePayEvent[],
   options: DeliveryOptions,
@@ -70,25 +94,16 @@ export async function deliverEvents(
   for (const event of plan) {
     // Every delivery of an event carries the same bytes; only the signature changes.
     const body = JSON.stringify(event);
-    for (let attempt = 1; ; attempt += 1) {
+    for (let attemptNumber = 1; ; attemptNumber += 1) {
       summary.attempts += 1;
-      const response = await send(url, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "fakepay-signature": signatureHeader(Buffer.from(body), options.secret, nowSeconds()),
-        },
-        body,
-      });
-      if (response.ok || attempt >= maxAttempts) {
-        const status = response.ok
-          ? await responseStatus(response)
-          : `http ${String(response.status)}`;
-        summary.byStatus[status] = (summary.byStatus[status] ?? 0) + 1;
-        if (!response.ok) summary.failedEventIds.push(event.id);
+      const signature = signatureHeader(Buffer.from(body), options.secret, nowSeconds());
+      const result = await attempt(send, url, body, signature);
+      if (result.ok || attemptNumber >= maxAttempts) {
+        summary.byStatus[result.status] = (summary.byStatus[result.status] ?? 0) + 1;
+        if (!result.ok) summary.failedEventIds.push(event.id);
         break;
       }
-      await sleep(RETRY_DELAY_MS * attempt);
+      await sleep(RETRY_DELAY_MS * attemptNumber);
     }
   }
   return summary;
