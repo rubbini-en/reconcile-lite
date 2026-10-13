@@ -12,12 +12,26 @@ export interface CliResult {
   stderr: string;
 }
 
-/** Runs a CLI entry point as a child process against the test database. */
-export async function runCli(script: string, args: readonly string[]): Promise<CliResult> {
+/**
+ * Runs a CLI entry point as a child process against the test database. An
+ * `env` entry set to undefined removes that variable.
+ */
+export async function runCli(
+  script: string,
+  args: readonly string[],
+  env: Record<string, string | undefined> = {},
+): Promise<CliResult> {
+  const childEnv = Object.fromEntries(
+    Object.entries<string | undefined>({
+      ...process.env,
+      DATABASE_URL: testDatabaseUrl(),
+      ...env,
+    }).filter(([, value]) => value !== undefined),
+  );
   try {
     const { stdout, stderr } = await run(process.execPath, ["--import", "tsx", script, ...args], {
       cwd: ROOT,
-      env: { ...process.env, DATABASE_URL: testDatabaseUrl() },
+      env: childEnv,
     });
     return { code: 0, stdout, stderr };
   } catch (error) {
