@@ -73,6 +73,16 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   mocked scores.
 - **A money mismatch beats `duplicate`** at the exact stage: a claimed order
   with a different amount is reported as `amount_mismatch`.
+- **Reconcile runs** process settled payments oldest settlement first
+  (`settled_at`, then provider payment ID). Only `matched` claims an order, the
+  same rule as the one-match-per-order index; an amount mismatch or a full
+  refund leaves the order free for a later payment.
+- **A run replaces all results** (`DELETE` + `INSERT`) in one `REPEATABLE READ`
+  transaction. Results are derived data, and row-by-row updates could briefly
+  give two payments the same matched order. A session advisory lock (726_002)
+  makes concurrent runs wait, so each reads what the previous one committed.
+- **Known limit:** a run loads every order and inserts results one row at a
+  time. Fine for this project's scale; not measured on large data.
 
 ## Open questions
 
@@ -87,9 +97,9 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    `refund_currency_mismatch`). Unsettled payments are never reconciled, and the
    total is recomputed once the settlement arrives, so this is only visible in
    the raw row. Alternative: store 0 until settled. Not decided.
-4. **`refunded_minor` above 2^53 − 1.** Postgres allows it (`BIGINT`) and many
-   refunds could reach it; `minorUnitsFromDb` would then throw when the
-   reconcile step loads the row. To handle in milestone 2.
+4. ~~**`refunded_minor` above 2^53 − 1.**~~ Resolved in milestone 2: the
+   loader caps it at 2^53 − 1, which is still a full refund because amounts
+   never exceed that value; the exact total stays in the table.
 5. **Review suggestions on matching** (non-blocking, for the reconcile runner):
    validate `MatchingConfig` ranges when loading it (threshold in 0..1, lead
    ≥ 0); `compareNumericIds` throws on a non-numeric ID, which only database
@@ -119,3 +129,8 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   prefix-cap test was tightened to an exact score. Mutation checks: flipping
   each threshold, lead, window and tie rule, and the full-refund boundary,
   made at least one test fail every time.
+- Milestone 2 (runner): the runner was assigned to the integrator because
+  Codex's tool host had failed. Mutation checks: removing the run lock failed
+  the concurrency test 3/3; removing the delete, the 2^53 cap, or the
+  settlement sort each failed their own tests. The CLI was run once against
+  `reconcile_test` with 4 fictional payments.
