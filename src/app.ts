@@ -1,4 +1,5 @@
 import Fastify, { type FastifyError, type FastifyServerOptions } from "fastify";
+import { exceptionsRoutes } from "./report/routes.js";
 import { webhookRoutes, type WebhookOptions } from "./webhooks/routes.js";
 
 type LoggerOption = Exclude<FastifyServerOptions["logger"], undefined>;
@@ -42,6 +43,10 @@ export function buildApp({ logger, ...options }: AppOptions) {
   });
   app.register((scope, _options, done) => {
     webhookRoutes(scope, { ...options, now: options.now ?? (() => Math.floor(Date.now() / 1000)) });
+    done();
+  });
+  app.register((scope, _options, done) => {
+    exceptionsRoutes(scope, { pool: options.pool, config: options.config });
     done();
   });
   return app;
