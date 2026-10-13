@@ -105,6 +105,9 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    ≥ 0); `compareNumericIds` throws on a non-numeric ID, which only database
    IDs reach today; `normalizeText` removes marks before lowercasing, so a
    letter like `İ` keeps a stray mark after lowercasing.
+6. **Reconcile lock wait is unbounded** (review suggestion). A second run waits
+   for the first without a timeout. Options: `lock_timeout` for the run, or
+   `pg_try_advisory_lock` and exit with "a run is already in progress".
 
 ## Process log
 
