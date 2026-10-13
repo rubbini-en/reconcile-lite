@@ -216,6 +216,18 @@ describe("loadExceptionReport", () => {
     expect((await loadExceptionReport({ pool })).items).toEqual([]);
   });
 
+  it("treats a result without a recorded payment version as outdated", async () => {
+    await insertOrder("ORD-1001", "Ana Duarte", 150000);
+    await insertPayment("pay_legacy", { reference: "ORD-1001" });
+    await runReconciliation({ pool, now: () => RUN_AT });
+    // Rows written before migration 003 have no payment_updated_at.
+    await pool.query("UPDATE reconciliation_results SET payment_updated_at = NULL");
+    const { items } = await loadExceptionReport({ pool });
+    expect(items.map((entry) => [entry.providerPaymentId, entry.resultOutdated])).toEqual([
+      ["pay_legacy", true],
+    ]);
+  });
+
   it("returns an empty report before any reconcile run", async () => {
     expect(await loadExceptionReport({ pool, now: () => GENERATED_AT })).toEqual({
       generatedAt: GENERATED_AT,

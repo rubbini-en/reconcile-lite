@@ -104,7 +104,9 @@ export async function replaceResults(
   for (const { paymentId, decision } of decisions) {
     const columns = resultColumns(decision);
     await client.query(
-      // payment_updated_at is read in the run's snapshot: the version it reconciled.
+      // The run is REPEATABLE READ, so this subquery reads the same snapshot as
+      // loadSettledPayments: the version reconciled, even if a webhook commits
+      // meanwhile (that change then shows as an outdated result).
       `INSERT INTO reconciliation_results
          (payment_id, status, order_id, stage, confidence, candidate_order_ids, reconciled_at,
           payment_updated_at)
