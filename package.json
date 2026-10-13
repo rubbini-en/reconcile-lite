@@ -17,6 +17,7 @@
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "import:orders": "tsx src/orders/cli.ts",
     "reconcile": "tsx src/reconcile/cli.ts",
+    "report": "tsx src/report/cli.ts",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration"

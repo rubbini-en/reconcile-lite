@@ -1,14 +1,11 @@
-import { execFile } from "node:child_process";
 import path from "node:path";
-import { promisify } from "node:util";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type pg from "pg";
 import { OrderImportError, type NewOrder } from "../../../src/orders/csv-import.js";
 import { importOrders } from "../../../src/orders/repository.js";
-import { createTestPool, resetDatabase, testDatabaseUrl } from "../../helpers/database.js";
+import { ROOT, runCli } from "../../helpers/cli.js";
+import { createTestPool, resetDatabase } from "../../helpers/database.js";
 
-const run = promisify(execFile);
-const ROOT = path.resolve(import.meta.dirname, "../../..");
 const fixture = (name: string) => path.join(ROOT, "test/fixtures", name);
 
 let pool: pg.Pool;
@@ -66,20 +63,7 @@ const STORED = [
   },
 ];
 
-/** Runs the real CLI as a child process against the test database. */
-async function importCli(file: string) {
-  try {
-    const { stdout, stderr } = await run(
-      process.execPath,
-      ["--import", "tsx", "src/orders/cli.ts", fixture(file)],
-      { cwd: ROOT, env: { ...process.env, DATABASE_URL: testDatabaseUrl() } },
-    );
-    return { code: 0, stdout, stderr };
-  } catch (error) {
-    const failed = error as { code: number; stdout: string; stderr: string };
-    return { code: failed.code, stdout: failed.stdout, stderr: failed.stderr };
-  }
-}
+const importCli = (file: string) => runCli("src/orders/cli.ts", [fixture(file)]);
 
 describe("importOrders", () => {
   it("stores every order with exact minor units and UTC timestamps", async () => {
