@@ -27,8 +27,10 @@ async function readOrders(path: string) {
   let bytes: Buffer;
   try {
     // Checking the size first avoids loading an oversized file into memory.
-    const { size } = await stat(path);
-    if (size > MAX_ORDERS_FILE_BYTES) throw tooLarge(size);
+    const info = await stat(path);
+    // A FIFO or device reports size 0 and could be read without end.
+    if (!info.isFile()) throw new OrderImportError([`${path} is not a regular file`]);
+    if (info.size > MAX_ORDERS_FILE_BYTES) throw tooLarge(info.size);
     bytes = await readFile(path);
   } catch (error) {
     if (error instanceof OrderImportError) throw error;

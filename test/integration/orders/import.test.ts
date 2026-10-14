@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -153,4 +154,19 @@ describe("npm run import:orders", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("rejects a path that is not a regular file instead of reading it", async () => {
+    mkdirSync(path.join(ROOT, ".tmp"), { recursive: true });
+    const dir = mkdtempSync(path.join(ROOT, ".tmp", "orders-"));
+    try {
+      // A FIFO reports size 0 and would block a read forever.
+      const fifo = path.join(dir, "orders.fifo");
+      execFileSync("mkfifo", [fifo]);
+      const result = await runCli("src/orders/cli.ts", [fifo]);
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(`${fifo} is not a regular file`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });
