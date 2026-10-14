@@ -70,7 +70,11 @@ describe("GET /exceptions access", () => {
     ["a limit with a sign", "?limit=+5", "limit must be a whole number from 1 to 500"],
     ["a repeated limit", "?limit=5&limit=6", "limit must be a whole number from 1 to 500"],
     ["an empty cursor", "?cursor=", "cursor must be 1 to 64 characters"],
-    ["a cursor over 64 characters", `?cursor=${"p".repeat(65)}`, "cursor must be 1 to 64 characters"],
+    [
+      "a cursor over 64 characters",
+      `?cursor=${"p".repeat(65)}`,
+      "cursor must be 1 to 64 characters",
+    ],
     ["a repeated cursor", "?cursor=a&cursor=b", "cursor must be 1 to 64 characters"],
   ])("returns 400 for %s", async (_label, query, message) => {
     const { app, connect } = setup();
