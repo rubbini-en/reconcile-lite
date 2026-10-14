@@ -161,16 +161,23 @@ header.
 
 ### `GET /exceptions`
 
-Returns every payment that needs attention, as JSON.
+Returns the payments that need attention, as JSON, one page at a time.
 
 ```sh
 curl -H "Authorization: Bearer $REPORT_API_TOKEN" \
-  "http://127.0.0.1:3000/exceptions?day=2026-10-10"
+  "http://127.0.0.1:3000/exceptions?day=2026-10-10&limit=50"
 ```
 
-- **`day`** is optional: a UTC date in `YYYY-MM-DD` format.
-- **Responses:** `401` for a missing or wrong token, `400` for an invalid day.
-  Responses are sent with `Cache-Control: no-store`.
+| Parameter | Description                                                       |
+| --------- | ----------------------------------------------------------------- |
+| `day`     | Optional UTC date, `YYYY-MM-DD`                                   |
+| `limit`   | Page size, 1 to 500; defaults to 100                              |
+| `cursor`  | The `nextCursor` of the previous page; omit it for the first page |
+
+- **Paging:** items are ordered by payment ID. `nextCursor` is `null` on the
+  last page.
+- **Responses:** `401` for a missing or wrong token, `400` for an invalid
+  parameter. Responses are sent with `Cache-Control: no-store`.
 
 ## CLI
 
@@ -190,7 +197,8 @@ ORD-1001,María Benítez,150000,PYG,2026-10-10T12:00:00Z
 ORD-1002,"Acosta, Rodrigo",12.34,USD,2026-10-11T08:30:00Z
 ```
 
-Amounts are in major units, and timestamps are ISO 8601 UTC ending in `Z`.
+Amounts are in major units, and timestamps are ISO 8601 UTC ending in `Z`. A file
+can hold up to 100,000 orders and 10 MiB.
 
 ## Testing
 

@@ -162,15 +162,22 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 10. ~~**The CI workflow has never run on GitHub.**~~ Resolved: the first push
     (346ece9, actions at v4) passed every step, including integration tests
     against the Postgres service.
-11. **Security audit follow-ups** (all LOW, from the audit of 3c4d915; no
-    CRITICAL or HIGH findings, `npm audit` clean):
-    - `GET /exceptions` is not paginated; without `day` it reads every payment.
-    - The orders CSV import has no file size or row cap.
-    - The CSV formula guard does not strip other leading control characters.
-    - Error logs include the error message and stack (not sent to clients).
-    - The simulator's `fetch` follows redirects; `redirect: "error"` would
-      keep it strictly on loopback.
-    - No PII retention policy (see the README's Scope section).
+11. ~~**Security audit follow-ups**~~ Resolved (all LOW, from the audit of
+    3c4d915; no CRITICAL or HIGH findings, `npm audit` clean):
+    - `GET /exceptions` pages with `limit` (default 100, max 500) and a keyset
+      `cursor` on the payment ID (owner decision). The exception filter now
+      also runs in SQL so a page holds exactly `limit` items; a test checks
+      that paging agrees with the full report at several page sizes. The CLI
+      report stays complete.
+    - The orders CSV import is capped at 10 MiB (checked before reading) and
+      100,000 rows.
+    - The CSV formula guard also neutralizes cells that start with a control
+      character, or with whitespace before `= + - @`.
+    - Error logs keep the message, code and stack, which debugging needs; a
+      test pins that a database error's `detail` (row values) never reaches
+      the log. Accepted as is.
+    - The simulator refuses redirects (`redirect: "error"`).
+    - PII retention stays a documented deployment concern (README, Scope).
 
 ## Process log
 
