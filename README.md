@@ -237,7 +237,7 @@ test/            unit and integration tests (Vitest)
 
 ## Design decisions
 
-The reasoning behind each choice, along with the open questions, is in
+The reasoning behind each choice, and what was deliberately deferred, is in
 [docs/decisions.md](docs/decisions.md). Some of the decisions:
 
 - **Reconciliation runs as a batch.** Each run replaces all results inside one

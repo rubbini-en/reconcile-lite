@@ -1,13 +1,16 @@
 # Design decisions
 
-Why reconcile-lite works the way it does, grouped by area. Open questions are
-at the end.
+Why reconcile-lite works the way it does, grouped by area. Deferred items, and
+what should reopen them, are at the end.
 
 ## Money
 
-- **Integer minor units plus a currency.** Amounts are safe integers
-  (≤ 2^53 − 1); the provider contract caps them there because `JSON.parse`
-  loses precision above it. Supported currencies are PYG (exponent 0) and USD
+- **Integer minor units plus a currency.** A single amount is a validated
+  safe-integer `number` (≤ 2^53 − 1): the provider contract caps amounts there
+  because `JSON.parse` loses precision above it, and `number` avoids `bigint`
+  JSON problems. Accumulated refund totals are `bigint`, stored as Postgres
+  `BIGINT`; a total above 2^63 − 1 would make ingestion fail, which would take
+  over a thousand maximum-size refunds on one payment. Supported currencies are PYG (exponent 0) and USD
   (exponent 2); others are rejected at the boundary until added explicitly.
 - **CSV amounts** are decimal strings in major units (`12.34`), converted to
   minor units by string parsing. Extra decimals are rejected, never rounded.
@@ -36,8 +39,10 @@ at the end.
   Rejecting is only possible when the settlement arrived first, so the same
   events would end in different states depending on arrival order.
 - **Mixed refund currencies before settlement** add `refund_currency_mismatch`.
-  There is no settled currency yet, so `refunded_minor` still sums them (see
-  open question 2).
+  There is no settled currency yet, so the stored `refunded_minor` still sums
+  them, and the total is recomputed once the settlement arrives. The Markdown
+  report shows "mixed currencies (see anomalies)" instead of that number; the
+  CSV and the API keep the raw total next to the anomaly flag.
 - **Unstorable text is a client error.** Postgres `jsonb` rejects NUL and lone
   UTF-16 surrogates. A body containing them anywhere (values or keys, including
   ignored fields) gets `400` before any database access; a `500` would make
@@ -52,6 +57,11 @@ at the end.
 - **Matching never picks between equals.** Two orders whose references are
   equal after trimming give `ambiguous` at the exact stage, and a tie for the
   best fuzzy score gives `ambiguous` even when `fuzzyMinLead` is 0.
+- **Matching settings are a constant** (`DEFAULT_MATCHING_CONFIG`), so they are
+  not validated at runtime.
+- **Text normalization** decomposes accents and strips marks before
+  lowercasing, so `İstanbul` becomes `istanbul`. Dotless `ı` stays its own
+  letter and does not match `i`.
 - **Fuzzy scores** are compared in integer thousandths. A score equal to the
   threshold is eligible; a lead equal to `fuzzyMinLead` picks the winner.
   Boundary tests use real Jaro-Winkler values (`martha`/`marhta` = 0.961), not
@@ -74,10 +84,10 @@ at the end.
   free for a later payment.
 - **A run replaces all results** (`DELETE` + `INSERT`) in one `REPEATABLE READ`
   transaction. Results are derived data, and row-by-row updates could briefly
-  give two payments the same matched order. A session advisory lock makes
-  concurrent runs wait, so each reads what the previous one committed.
-- **Known limit:** a run loads every order and inserts results one row at a
-  time. Not measured on large data.
+  give two payments the same matched order. A session advisory lock allows one
+  run at a time: a run that finds it taken exits at once with "a reconcile run
+  is already in progress" instead of waiting behind a run that may hang. A
+  refused run loses nothing, because the next run reads everything again.
 
 ## Order import
 
@@ -145,23 +155,18 @@ at the end.
   and does nothing outside a git checkout. The hook is client-side only:
   `git push --no-verify` bypasses it.
 
-## Open questions
+## Deferred, and when to revisit
 
-1. **Money type in TypeScript.** Amounts are validated safe-integer `number`s,
-   not `bigint`. The contract caps amounts at 2^53 − 1, and `number` avoids
-   `bigint` JSON serialization problems.
-2. **Unsettled `refunded_minor` across currencies.** Before settlement, refunds
-   in different currencies are summed into one number (flagged with
-   `refund_currency_mismatch`). The total is recomputed once the settlement
-   arrives, so this is only visible in the raw row. Alternative: store 0 until
-   settled.
-3. **Matching configuration and normalization.** `MatchingConfig` ranges are not
-   validated when loaded (threshold in 0..1, lead ≥ 0); `compareNumericIds`
-   throws on a non-numeric ID, which only database IDs reach today;
-   `normalizeText` removes marks before lowercasing, so a letter like `İ` keeps
-   a stray mark.
-4. **Reconcile lock wait is unbounded.** A second run waits for the first
-   without a timeout. Options: `lock_timeout` for the run, or
-   `pg_try_advisory_lock` and exit with "a run is already in progress".
-5. **Unpaid orders are not reported.** The report is payment-centred; orders no
-   payment matched do not appear.
+Nothing below blocks current use. Each item names what should reopen it.
+
+- **Unpaid orders are not reported.** The report is payment-centred; orders no
+  payment matched do not appear. Deciding what "unpaid" means (age, currency,
+  partial payment) belongs to real use. Revisit when someone needs to chase
+  orders nobody has paid.
+- **Matching settings validation.** Validate threshold, lead and window ranges
+  at the boundary once the settings can be loaded from the environment or a
+  file, the way `src/config.ts` validates the server settings.
+- **Turkish dotless `ı`** does not match `i`. Revisit if real data includes
+  Turkish names.
+- **Scale.** A reconcile run loads every order into memory and inserts results
+  one row at a time. Revisit with real data volumes and a measurement.
