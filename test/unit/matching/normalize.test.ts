@@ -20,6 +20,14 @@ describe("normalizeText", () => {
     expect(normalizeText("hello\t\n  world")).toBe("hello world");
   });
 
+  it("folds dotted capital İ to plain i, leaving no stray combining mark", () => {
+    expect(normalizeText("İstanbul")).toBe("istanbul");
+  });
+
+  it("keeps dotless ı as its own letter (a known limit)", () => {
+    expect(normalizeText("Iğdır")).toBe("igdır");
+  });
+
   it("returns an empty string for null, undefined, or empty string", () => {
     expect(normalizeText(null)).toBe("");
     expect(normalizeText(undefined)).toBe("");
