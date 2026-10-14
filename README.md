@@ -243,8 +243,8 @@ benchmarked on large datasets.
 
 ## Contributing
 
-Every push must say whether CI should run. End the last commit message of each
-pushed branch with a tag:
+Every push must say whether CI should run. The last commit of each pushed
+branch must include one of these tags anywhere in its message:
 
 | Tag         | Effect                       | Use it for                     |
 | ----------- | ---------------------------- | ------------------------------ |
@@ -258,7 +258,7 @@ docs: fix a typo in the quickstart [skip ci]
 
 A `pre-push` hook in [`.githooks/`](.githooks/pre-push) rejects a push whose
 branch tip has neither tag. `npm install` enables it by setting
-`core.hooksPath`. Commits use [Conventional Commits](https://www.conventionalcommits.org/).
+`core.hooksPath`, and warns if that replaces a hooks path you already had. Commits use [Conventional Commits](https://www.conventionalcommits.org/).
 
 ## License
 
