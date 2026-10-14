@@ -15,7 +15,17 @@ describe("loadConfig", () => {
       fakepayWebhookSecret: validEnv.FAKEPAY_WEBHOOK_SECRET,
       reportApiToken: validEnv.REPORT_API_TOKEN,
       port: 3000,
+      host: "127.0.0.1",
     });
+  });
+
+  it("listens on loopback only unless HOST says otherwise", () => {
+    expect(loadConfig(validEnv).host).toBe("127.0.0.1");
+    expect(loadConfig({ ...validEnv, HOST: "0.0.0.0" }).host).toBe("0.0.0.0");
+  });
+
+  it("rejects an empty HOST", () => {
+    expect(() => loadConfig({ ...validEnv, HOST: "" })).toThrow(/HOST/);
   });
 
   it("defaults PORT to 3000", () => {

@@ -18,7 +18,7 @@ async function startServer(): Promise<void> {
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
   try {
-    await app.listen({ port: config.port, host: "0.0.0.0" });
+    await app.listen({ port: config.port, host: config.host });
   } catch (error) {
     await app.close();
     throw error;

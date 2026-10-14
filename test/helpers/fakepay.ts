@@ -10,6 +10,7 @@ export const TEST_CONFIG = {
   fakepayWebhookSecret: TEST_SECRET,
   reportApiToken: TEST_REPORT_TOKEN,
   port: 3000,
+  host: "127.0.0.1",
 };
 export const NOW_SECONDS = 1_791_811_800;
 
