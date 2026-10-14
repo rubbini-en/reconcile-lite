@@ -32,6 +32,7 @@ export function buildApp({ logger, ...options }: AppOptions) {
     if (error.statusCode !== undefined && error.statusCode >= 400 && error.statusCode < 500) {
       return reply.code(error.statusCode).send({ status: "invalid_request" });
     }
+    // Only these fields: a pg error's `detail` (and similar extras) repeats row values.
     request.log.error(
       {
         err: { message: error.message, code: error.code, stack: error.stack },
