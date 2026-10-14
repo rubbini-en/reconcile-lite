@@ -131,12 +131,13 @@ An excerpt of the report:
 
 ## Configuration
 
-| Variable                 | Required by         | Notes                        |
-| ------------------------ | ------------------- | ---------------------------- |
-| `DATABASE_URL`           | server and all CLIs | `postgres://` connection URL |
-| `FAKEPAY_WEBHOOK_SECRET` | server, simulator   | at least 32 characters       |
-| `REPORT_API_TOKEN`       | server              | at least 32 characters       |
-| `PORT`                   | server              | optional, defaults to `3000` |
+| Variable                 | Required by         | Notes                             |
+| ------------------------ | ------------------- | --------------------------------- |
+| `DATABASE_URL`           | server and all CLIs | `postgres://` connection URL      |
+| `FAKEPAY_WEBHOOK_SECRET` | server, simulator   | at least 32 characters            |
+| `REPORT_API_TOKEN`       | server              | at least 32 characters            |
+| `PORT`                   | server              | optional, defaults to `3000`      |
+| `HOST`                   | server              | optional, defaults to `127.0.0.1` |
 
 A template is in [`.env.example`](.env.example). The app does not read `.env`
 files itself; load one into your shell with `set -a; . ./.env; set +a`.
@@ -243,6 +244,11 @@ reconcile-lite is a reference implementation built against a fictional
 provider. Matching thresholds are fixed in code, only PYG and USD are
 supported, and orders with no payment are not reported. It has not been
 benchmarked on large datasets.
+
+Before exposing it beyond localhost (`HOST=0.0.0.0`), put it behind a reverse
+proxy that terminates TLS and rate-limits requests; the service does neither
+itself. Payer names are stored in full, raw webhook bodies included, and
+nothing deletes old events, so a real deployment needs a retention policy.
 
 ## Contributing
 

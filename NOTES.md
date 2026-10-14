@@ -119,6 +119,9 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   head commit. Tag pushes and branch deletions are not checked. The hook runs
   on the developer's machine only: `git push --no-verify` bypasses it, and
   GitHub does not enforce the tag server-side.
+- **The server listens on `127.0.0.1` by default** (`HOST` overrides it).
+  Exposing it is an explicit choice, expected behind a reverse proxy that adds
+  TLS and rate limiting. Raised by the security audit after milestone 4.
 
 ## Open questions
 
@@ -159,6 +162,15 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 10. ~~**The CI workflow has never run on GitHub.**~~ Resolved: the first push
     (346ece9, actions at v4) passed every step, including integration tests
     against the Postgres service.
+11. **Security audit follow-ups** (all LOW, from the audit of 3c4d915; no
+    CRITICAL or HIGH findings, `npm audit` clean):
+    - `GET /exceptions` is not paginated; without `day` it reads every payment.
+    - The orders CSV import has no file size or row cap.
+    - The CSV formula guard does not strip other leading control characters.
+    - Error logs include the error message and stack (not sent to clients).
+    - The simulator's `fetch` follows redirects; `redirect: "error"` would
+      keep it strictly on loopback.
+    - No PII retention policy (see the README's Scope section).
 
 ## Process log
 
