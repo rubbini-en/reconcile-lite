@@ -153,11 +153,12 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    it.
 9. ~~**Pin GitHub Actions by commit SHA?**~~ Resolved: `actions/checkout`
    v7.0.1 and `actions/setup-node` v7.0.0 are pinned by commit SHA (resolved
-   through the GitHub API). setup-node v7.1.0 was skipped because it was only
-   days old.
-10. **The CI workflow has never run on GitHub.** Its steps were run locally in
-    order; the service container, the npm cache and the runner image were not
-    exercised.
+   through the GitHub API). This is also an upgrade from v4, whose Node 20
+   runtime GitHub deprecated. setup-node v7.1.0 was skipped because it was
+   only days old.
+10. ~~**The CI workflow has never run on GitHub.**~~ Resolved: the first push
+    (346ece9, actions at v4) passed every step, including integration tests
+    against the Postgres service.
 
 ## Process log
 
