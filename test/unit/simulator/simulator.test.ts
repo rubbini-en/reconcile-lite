@@ -1,3 +1,5 @@
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, expect, it, vi } from "vitest";
 import { formatDecimalAmount } from "../../../src/money.js";
 import { parseOrdersCsv } from "../../../src/orders/csv-import.js";
@@ -98,6 +100,10 @@ describe("buildScenario", () => {
   });
 });
 
+const listen = (server: Server) =>
+  new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+const port = (server: Server) => (server.address() as AddressInfo).port;
+
 function response(status: number, body: object = { status: "processed" }) {
   return new Response(JSON.stringify(body), { status });
 }
@@ -129,6 +135,36 @@ describe("deliverEvents", () => {
       expect(
         verifySignature({ rawBody: body, header, secret: TEST_SECRET, nowSeconds: NOW_SECONDS }),
       ).toEqual({ ok: true });
+    }
+  });
+
+  it("refuses to follow redirects, so deliveries never leave loopback", async () => {
+    const fetch = vi.fn((_url: string, _init: RequestInit) => Promise.resolve(response(200)));
+    await deliverEvents(events.slice(0, 1), { ...base, fetch });
+    expect(fetch.mock.calls[0]?.[1].redirect).toBe("error");
+  });
+
+  it("does not follow a real redirect to another server", async () => {
+    let targetHits = 0;
+    const target = createServer((_request, reply) => {
+      targetHits += 1;
+      reply.end('{"status":"processed"}');
+    });
+    const redirecting = createServer((_request, reply) => {
+      reply.writeHead(307, { location: `http://127.0.0.1:${String(port(target))}/` }).end();
+    });
+    await Promise.all([listen(target), listen(redirecting)]);
+    try {
+      const summary = await deliverEvents(events.slice(0, 1), {
+        ...base,
+        url: `http://127.0.0.1:${String(port(redirecting))}/webhooks/fakepay`,
+        maxAttempts: 1,
+      });
+      expect(summary.byStatus).toEqual({ "network error": 1 });
+      expect(targetHits).toBe(0);
+    } finally {
+      target.close();
+      redirecting.close();
     }
   });
 

@@ -65,6 +65,8 @@ async function attempt(
       method: "POST",
       headers: { "content-type": "application/json", "fakepay-signature": signature },
       body,
+      // A redirect could point anywhere; the loopback check only covers the first URL.
+      redirect: "error",
     });
   } catch {
     return { ok: false, status: "network error" };
