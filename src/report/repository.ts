@@ -28,9 +28,9 @@ interface PaymentReportRow {
 
 // A payment's day is its settlement time or, before settlement, the time of
 // its first event. Candidates are listed in their stored (numeric ID) order.
-// The exception filter mirrors isException() so that a page holds exactly
-// `limit` exceptions; isException() is still applied afterwards as the
-// definition of record. Paging is keyset-based on the payment ID.
+// When paging, the exception filter runs in SQL (mirroring isException()) so
+// that a page holds `limit` exceptions; the complete report relies on
+// isException() alone. Paging is keyset-based on the payment ID.
 const PAYMENTS_QUERY = `
   WITH dated_payments AS (
     SELECT p.*,
@@ -57,7 +57,7 @@ const PAYMENTS_QUERY = `
   LEFT JOIN orders o ON o.id = r.order_id
   WHERE ($1::timestamptz IS NULL OR (p.activity_at >= $1 AND p.activity_at < $2))
     AND ($3::text IS NULL OR p.provider_payment_id COLLATE "C" > $3)
-    AND (p.settled_at IS NULL
+    AND ($4::int IS NULL OR p.settled_at IS NULL
          OR r.status IS DISTINCT FROM 'matched'
          OR (p.refunded_minor > 0 AND p.refunded_minor < p.amount_minor)
          OR cardinality(p.anomalies) > 0
@@ -128,13 +128,15 @@ export async function loadExceptionReport({
     );
     await client.query("COMMIT");
     const hasMore = page !== undefined && payments.rows.length > page.limit;
-    const items = payments.rows.slice(0, page?.limit).map(toItem).filter(isException);
+    const pageRows = payments.rows.slice(0, page?.limit);
+    const items = pageRows.map(toItem).filter(isException);
     const report = {
       generatedAt: now(),
       day: day?.day ?? null,
       lastReconciledAt: lastRun.rows[0]?.last_reconciled_at ?? null,
       items,
-      nextCursor: hasMore ? (items.at(-1)?.providerPaymentId ?? null) : null,
+      // The last row read, not the last item kept, so no row is read twice.
+      nextCursor: hasMore ? (pageRows.at(-1)?.provider_payment_id ?? null) : null,
     };
     client.release();
     return report;
