@@ -1,5 +1,5 @@
 import { createPool } from "../db/pool.js";
-import { formatSummary, runReconciliation } from "./run.js";
+import { formatSummary, ReconcileInProgressError, runReconciliation } from "./run.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -10,6 +10,10 @@ if (!databaseUrl) {
 const pool = createPool(databaseUrl);
 try {
   console.log(formatSummary(await runReconciliation({ pool })));
+} catch (error) {
+  if (!(error instanceof ReconcileInProgressError)) throw error;
+  console.error(`${error.message}; try again when it finishes.`);
+  process.exitCode = 1;
 } finally {
   await pool.end();
 }

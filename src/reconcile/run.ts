@@ -9,7 +9,14 @@ import { reconcileBatch, type PaymentDecision } from "./batch.js";
 import { loadOrders, loadSettledPayments, replaceResults } from "./repository.js";
 
 /** Session lock shared by every reconcile run (the migration runner uses 726_001). */
-const RECONCILE_LOCK_KEY = 726_002;
+export const RECONCILE_LOCK_KEY = 726_002;
+
+export class ReconcileInProgressError extends Error {
+  override name = "ReconcileInProgressError";
+  constructor() {
+    super("A reconcile run is already in progress");
+  }
+}
 
 export interface RunOptions {
   pool: pg.Pool;
@@ -49,9 +56,10 @@ async function reconcileInTransaction(
 }
 
 /**
- * Reconciles every settled payment and replaces the stored results. Runs wait
- * for each other: the lock is taken before the transaction starts, so each run
- * reads the data the previous one committed.
+ * Reconciles every settled payment and replaces the stored results. Only one
+ * run at a time: a run that finds the lock taken fails at once instead of
+ * waiting behind a run that may hang. Each run replaces every result, so a
+ * refused run loses nothing; the next one reads everything again.
  */
 export async function runReconciliation({
   pool,
@@ -59,8 +67,23 @@ export async function runReconciliation({
   now = () => new Date(),
 }: RunOptions): Promise<ReconcileSummary> {
   const client = await pool.connect();
+  let acquired: boolean;
   try {
-    await client.query("SELECT pg_advisory_lock($1)", [RECONCILE_LOCK_KEY]);
+    const lock = await client.query<{ acquired: boolean }>(
+      "SELECT pg_try_advisory_lock($1) AS acquired",
+      [RECONCILE_LOCK_KEY],
+    );
+    acquired = lock.rows[0]?.acquired === true;
+  } catch (error) {
+    client.release(true);
+    throw error;
+  }
+  if (!acquired) {
+    // Nothing was started on this connection, so it can go back to the pool.
+    client.release();
+    throw new ReconcileInProgressError();
+  }
+  try {
     const summary = await reconcileInTransaction(client, config, now);
     await client.query("SELECT pg_advisory_unlock($1)", [RECONCILE_LOCK_KEY]);
     client.release();

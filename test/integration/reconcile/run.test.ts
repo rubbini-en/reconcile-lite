@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type pg from "pg";
-import { runReconciliation } from "../../../src/reconcile/run.js";
+import {
+  RECONCILE_LOCK_KEY,
+  ReconcileInProgressError,
+  runReconciliation,
+} from "../../../src/reconcile/run.js";
 import { createTestPool, resetDatabase } from "../../helpers/database.js";
 
 let pool: pg.Pool;
@@ -216,16 +220,39 @@ describe("runReconciliation", () => {
     expect(await storedResults()).toEqual(EVERY_STATUS);
   });
 
-  it("serializes concurrent runs", async () => {
+  it("refuses to start while another run holds the lock, then runs once it is free", async () => {
     await seedEveryStatus();
-    const runs = await Promise.all(
+    const holder = await pool.connect();
+    try {
+      await holder.query("SELECT pg_advisory_lock($1)", [RECONCILE_LOCK_KEY]);
+      await expect(runReconciliation({ pool, now: () => FIRST_RUN })).rejects.toThrow(
+        new ReconcileInProgressError(),
+      );
+      expect(await storedResults()).toEqual([]);
+    } finally {
+      await holder.query("SELECT pg_advisory_unlock($1)", [RECONCILE_LOCK_KEY]);
+      holder.release();
+    }
+    const summary = await runReconciliation({ pool, now: () => FIRST_RUN });
+    expect(summary.total).toBe(7);
+    expect(await storedResults()).toEqual(EVERY_STATUS);
+  });
+
+  it("lets exactly one of several simultaneous runs through", async () => {
+    await seedEveryStatus();
+    const outcomes = await Promise.allSettled(
       [FIRST_RUN, SECOND_RUN, FIRST_RUN].map((runAt) =>
         runReconciliation({ pool, now: () => runAt }),
       ),
     );
-    expect(runs.map((summary) => summary.total)).toEqual([7, 7, 7]);
+    const succeeded = outcomes.filter((outcome) => outcome.status === "fulfilled");
+    const refused = outcomes.filter(
+      (outcome) =>
+        outcome.status === "rejected" && outcome.reason instanceof ReconcileInProgressError,
+    );
+    expect(succeeded.length).toBeGreaterThanOrEqual(1);
+    expect(succeeded.length + refused.length).toBe(3);
     const stored = await storedResults();
-    expect(stored).toHaveLength(7);
     expect(stored.map(({ reconciledAt: _reconciledAt, ...fields }) => fields)).toEqual(
       EVERY_STATUS.map(({ reconciledAt: _reconciledAt, ...fields }) => fields),
     );
