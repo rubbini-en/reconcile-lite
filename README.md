@@ -138,6 +138,9 @@ An excerpt of the report:
 | `REPORT_API_TOKEN`       | server              | at least 32 characters       |
 | `PORT`                   | server              | optional, defaults to `3000` |
 
+A template is in [`.env.example`](.env.example). The app does not read `.env`
+files itself; load one into your shell with `set -a; . ./.env; set +a`.
+
 The server checks every variable at startup and lists all the problems it finds.
 Error messages name the variable but never print its value.
 

@@ -148,11 +148,10 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    `pg_try_advisory_lock` and exit with "a run is already in progress".
 7. **Unpaid orders are not reported.** The report is payment-centred; orders no
    payment matched do not appear. Add a section if that view is needed.
-8. **`.env.example` is still missing.** Writing it was blocked by a local
-   permission rule in Step 0; the owner needs to create it or allow the write.
-   Variables: `DATABASE_URL`, `FAKEPAY_WEBHOOK_SECRET`, `REPORT_API_TOKEN`,
-   `PORT`. Still blocked in milestone 4; the README lists the variables
-   instead.
+8. ~~**`.env.example` is missing.**~~ Resolved after milestone 4: the owner
+   created it (agent writes to `.env*` stay blocked by a local permission
+   rule). The app does not load `.env` itself; the README shows how to source
+   it.
 9. **Pin GitHub Actions by commit SHA?** `actions/checkout@v4` and
    `actions/setup-node@v4` are mutable tags. Pinning to SHAs needs looking them
    up on GitHub, which this session's rules did not allow.
