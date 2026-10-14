@@ -238,7 +238,7 @@ describe("runReconciliation", () => {
     expect(await storedResults()).toEqual(EVERY_STATUS);
   });
 
-  it("lets exactly one of several simultaneous runs through", async () => {
+  it("ends simultaneous runs either done or refused, with one correct result set", async () => {
     await seedEveryStatus();
     const outcomes = await Promise.allSettled(
       [FIRST_RUN, SECOND_RUN, FIRST_RUN].map((runAt) =>
