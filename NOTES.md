@@ -109,8 +109,7 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 - **CI** (`.github/workflows/ci.yml`) runs lint, format check, typecheck,
   build, unit and integration tests on every push and pull request, against a
   Postgres service with throwaway credentials. It has read-only repository
-  permission and uses no secrets. Actions are pinned by major tag (`@v4`), not
-  by commit SHA.
+  permission and uses no secrets. Actions are pinned by commit SHA.
 - **`npm start`** runs the compiled server (`dist/server.js`); build first.
 - **CI commit tags.** The tip commit of every pushed branch must contain
   `[ci]` or `[skip ci]` (owner decision). A versioned `pre-push` hook in
@@ -152,9 +151,10 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    created it (agent writes to `.env*` stay blocked by a local permission
    rule). The app does not load `.env` itself; the README shows how to source
    it.
-9. **Pin GitHub Actions by commit SHA?** `actions/checkout@v4` and
-   `actions/setup-node@v4` are mutable tags. Pinning to SHAs needs looking them
-   up on GitHub, which this session's rules did not allow.
+9. ~~**Pin GitHub Actions by commit SHA?**~~ Resolved: `actions/checkout`
+   v7.0.1 and `actions/setup-node` v7.0.0 are pinned by commit SHA (resolved
+   through the GitHub API). setup-node v7.1.0 was skipped because it was only
+   days old.
 10. **The CI workflow has never run on GitHub.** Its steps were run locally in
     order; the service container, the npm cache and the runner image were not
     exercised.
