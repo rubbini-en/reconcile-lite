@@ -231,14 +231,14 @@ src/
 ├── simulator/   FakePay scenario and delivery
 └── db/          connection pool and migration runner
 migrations/      plain SQL migrations
-docs/            FakePay provider contract
+docs/            FakePay contract and design decisions
 test/            unit and integration tests (Vitest)
 ```
 
 ## Design decisions
 
 The reasoning behind each choice, along with the open questions, is in
-[NOTES.md](NOTES.md). Some of the decisions:
+[docs/decisions.md](docs/decisions.md). Some of the decisions:
 
 - **Reconciliation runs as a batch.** Each run replaces all results inside one
   transaction, and a database lock allows only one run at a time.
