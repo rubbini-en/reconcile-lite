@@ -204,4 +204,20 @@ describe("renderCsv", () => {
   it.each(["Ana Duarte", "a=b", " Ana", "ORD-1001"])("leaves %j unchanged", (reference) => {
     expect(referenceCell(reference)).toBe(reference);
   });
+
+  it("does not print a refund total that mixes currencies before settlement", () => {
+    const mixed = item("pay_mixed", {
+      status: "awaiting_settlement",
+      amountMinor: null,
+      currency: null,
+      refundedMinor: "1600",
+      settledAt: null,
+      anomalies: ["refund_currency_mismatch"],
+    });
+    const markdown = renderMarkdown({ ...report, items: [mixed] });
+    expect(markdown).toContain("| pay\\_mixed | - | mixed currencies (see anomalies) |");
+    expect(markdown).not.toContain("1600");
+    // CSV and JSON keep the raw total; they carry the anomaly flag next to it.
+    expect(renderCsv({ ...report, items: [mixed] })).toContain(",1600,");
+  });
 });

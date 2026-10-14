@@ -45,11 +45,18 @@ function formatAmount(item: ExceptionItem): string {
     : formatMinorUnits(item.amountMinor, item.currency);
 }
 
-/** Before settlement the currency is unknown, so the total stays in minor units. */
+/**
+ * Before settlement the currency is unknown, so the total stays in minor units.
+ * Refunds in different currencies add up to a meaningless number; the
+ * anomaly says what happened instead.
+ */
 function formatRefunded(item: ExceptionItem): string {
-  return item.currency === null
-    ? `${item.refundedMinor} (minor units)`
-    : formatMinorUnits(BigInt(item.refundedMinor), item.currency);
+  if (item.currency !== null) {
+    return formatMinorUnits(BigInt(item.refundedMinor), item.currency);
+  }
+  return item.anomalies.includes("refund_currency_mismatch")
+    ? "mixed currencies (see anomalies)"
+    : `${item.refundedMinor} (minor units)`;
 }
 
 function detail(item: ExceptionItem): string | null {
