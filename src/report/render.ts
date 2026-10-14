@@ -128,16 +128,23 @@ const CSV_COLUMNS = [
   "result_outdated",
 ];
 
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const FORMULA_START = /^[=+\-@]/;
+
+/** True for C0 control characters (tab, CR, NUL, ...) and DEL. */
+function isControl(code: number | undefined): boolean {
+  return code !== undefined && (code < 0x20 || code === 0x7f);
+}
 
 /**
- * Spreadsheets run a cell that starts with = + - @ as a formula. A leading
- * apostrophe makes it plain text. No value this report generates is negative,
- * so the guard never changes one of its own numbers.
+ * Spreadsheets run a cell that starts with = + - @ as a formula, and some
+ * skip leading whitespace or control characters before deciding. A leading
+ * apostrophe makes the cell plain text. No value this report generates is
+ * negative, so the guard never changes one of its own numbers.
  */
 function csvCell(text: string | null): string {
   if (text === null) return "";
-  return FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  const risky = isControl(text.codePointAt(0)) || FORMULA_START.test(text.trimStart());
+  return risky ? `'${text}` : text;
 }
 
 function csvRow(item: ExceptionItem): string {

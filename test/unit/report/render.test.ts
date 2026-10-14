@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseCsv } from "../../../src/csv.js";
 import type { ExceptionItem, ExceptionReport } from "../../../src/report/exceptions.js";
 import { renderCsv, renderMarkdown } from "../../../src/report/render.js";
 
@@ -179,5 +180,28 @@ describe("renderCsv", () => {
     expect(csv.split("\r\n")[1]).toBe(
       "pay_x,unmatched,150000,PYG,0,2026-10-10T14:00:00.000Z,'=HYPERLINK(1),\"'+1, -2\",,,,,false,,false",
     );
+  });
+
+  const referenceCell = (reference: string) => {
+    const csv = renderCsv({
+      ...report,
+      items: [item("pay_x", { status: "unmatched", reference })],
+    });
+    return parseCsv(csv)[1]?.fields[6];
+  };
+
+  it.each([
+    ["a leading space", " =1+1"],
+    ["a leading vertical tab", "\u000B=1+1"],
+    ["a leading no-break space", "\u00A0+1"],
+    ["a leading NUL", "\u0000@SUM(A1)"],
+    ["a leading control character on its own", "\u001Fdata"],
+    ["a leading DEL", "\u007F=1"],
+  ])("neutralizes a cell with %s", (_label, reference) => {
+    expect(referenceCell(reference)).toBe(`'${reference}`);
+  });
+
+  it.each(["Ana Duarte", "a=b", " Ana", "ORD-1001"])("leaves %j unchanged", (reference) => {
+    expect(referenceCell(reference)).toBe(reference);
   });
 });
