@@ -11,3 +11,4 @@ coverage/
 .claude/
 .atl/
 AGENT_REPORT.md
+.tmp/
