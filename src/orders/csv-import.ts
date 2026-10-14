@@ -87,6 +87,10 @@ function readRecords(text: string): CsvRecord[] {
   }
 }
 
+// Imports are all-or-nothing and held in memory, so the file is bounded.
+export const MAX_ORDERS_FILE_BYTES = 10 * 1024 * 1024;
+export const MAX_ORDER_ROWS = 100_000;
+
 export function parseOrdersCsv(text: string): NewOrder[] {
   const [header, ...rows] = readRecords(text);
   const headerMatches =
@@ -96,6 +100,11 @@ export function parseOrdersCsv(text: string): NewOrder[] {
     throw new OrderImportError([`line 1: header must be "${ORDERS_CSV_HEADER.join(",")}"`]);
   }
   if (rows.length === 0) throw new OrderImportError(["the file contains no orders"]);
+  if (rows.length > MAX_ORDER_ROWS) {
+    throw new OrderImportError([
+      `the file has ${String(rows.length)} orders; the maximum is ${String(MAX_ORDER_ROWS)}`,
+    ]);
+  }
 
   const orders: NewOrder[] = [];
   const problems: string[] = [];

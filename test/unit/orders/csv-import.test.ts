@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { OrderImportError, parseOrdersCsv } from "../../../src/orders/csv-import.js";
+import {
+  MAX_ORDER_ROWS,
+  OrderImportError,
+  parseOrdersCsv,
+} from "../../../src/orders/csv-import.js";
 
 const HEADER = "order_ref,customer_name,amount,currency,created_at";
 
@@ -121,5 +125,28 @@ describe("parseOrdersCsv", () => {
 
   it("reports malformed CSV as one problem", () => {
     expect(problemsOf(`${HEADER}\n"ORD-1,Ana\n`)).toEqual(["line 2: unterminated quoted field"]);
+  });
+});
+
+describe("parseOrdersCsv row cap", () => {
+  const csv = (rows: number) =>
+    [
+      "order_ref,customer_name,amount,currency,created_at",
+      ...Array.from(
+        { length: rows },
+        (_, index) => `ORD-${String(index)},Ana Duarte,1000,PYG,2026-10-10T12:00:00Z`,
+      ),
+    ].join("\n");
+
+  it("accepts exactly the maximum number of orders", () => {
+    expect(parseOrdersCsv(csv(MAX_ORDER_ROWS))).toHaveLength(MAX_ORDER_ROWS);
+  });
+
+  it("rejects one order more than the maximum before validating rows", () => {
+    expect(() => parseOrdersCsv(csv(MAX_ORDER_ROWS + 1))).toThrow(
+      new OrderImportError([
+        `the file has ${String(MAX_ORDER_ROWS + 1)} orders; the maximum is ${String(MAX_ORDER_ROWS)}`,
+      ]),
+    );
   });
 });

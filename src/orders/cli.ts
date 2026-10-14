@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { createPool } from "../db/pool.js";
-import { OrderImportError, parseOrdersCsv } from "./csv-import.js";
+import { MAX_ORDERS_FILE_BYTES, OrderImportError, parseOrdersCsv } from "./csv-import.js";
 import { importOrders } from "./repository.js";
 
 const [filePath] = process.argv.slice(2);
@@ -17,14 +17,26 @@ if (!databaseUrl) {
 // Invalid UTF-8 is an error, not silently replaced characters in names.
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
 
+function tooLarge(size: number): OrderImportError {
+  return new OrderImportError([
+    `the file is ${String(size)} bytes; the maximum is ${String(MAX_ORDERS_FILE_BYTES)}`,
+  ]);
+}
+
 async function readOrders(path: string) {
   let bytes: Buffer;
   try {
+    // Checking the size first avoids loading an oversized file into memory.
+    const { size } = await stat(path);
+    if (size > MAX_ORDERS_FILE_BYTES) throw tooLarge(size);
     bytes = await readFile(path);
   } catch (error) {
+    if (error instanceof OrderImportError) throw error;
     const reason = error instanceof Error && "code" in error ? String(error.code) : "unknown error";
     throw new OrderImportError([`Cannot read ${path} (${reason})`]);
   }
+  // The file may have grown between the size check and the read.
+  if (bytes.length > MAX_ORDERS_FILE_BYTES) throw tooLarge(bytes.length);
   let text: string;
   try {
     text = strictUtf8.decode(bytes);

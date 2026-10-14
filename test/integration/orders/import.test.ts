@@ -1,7 +1,12 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type pg from "pg";
-import { OrderImportError, type NewOrder } from "../../../src/orders/csv-import.js";
+import {
+  MAX_ORDERS_FILE_BYTES,
+  OrderImportError,
+  type NewOrder,
+} from "../../../src/orders/csv-import.js";
 import { importOrders } from "../../../src/orders/repository.js";
 import { ROOT, runCli } from "../../helpers/cli.js";
 import { createTestPool, resetDatabase } from "../../helpers/database.js";
@@ -130,5 +135,22 @@ describe("npm run import:orders", () => {
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("the file is not valid UTF-8");
     expect(await storedOrders()).toEqual([]);
+  });
+
+  it("rejects a file over the size cap", async () => {
+    mkdirSync(path.join(ROOT, ".tmp"), { recursive: true });
+    const dir = mkdtempSync(path.join(ROOT, ".tmp", "orders-"));
+    try {
+      const file = path.join(dir, "big.csv");
+      writeFileSync(file, Buffer.alloc(MAX_ORDERS_FILE_BYTES + 1, "a"));
+      const result = await runCli("src/orders/cli.ts", [file]);
+      expect(result.code).toBe(1);
+      expect(result.stderr).toContain(
+        `the file is ${String(MAX_ORDERS_FILE_BYTES + 1)} bytes; the maximum is ${String(MAX_ORDERS_FILE_BYTES)}`,
+      );
+      expect(await storedOrders()).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
