@@ -75,4 +75,24 @@ describe("GET /exceptions", () => {
     expect(body.day).toBe("2026-10-11");
     expect(body.items.map((item) => item.providerPaymentId)).toEqual(["pay_eleventh"]);
   });
+
+  it("returns 100 items per page by default with no next cursor when all fit", async () => {
+    const body = (await getExceptions()).json<{ nextCursor: string | null }>();
+    expect(body.nextCursor).toBeNull();
+  });
+
+  it("pages with limit and cursor", async () => {
+    const first = (await getExceptions("?limit=1")).json<{
+      items: { providerPaymentId: string }[];
+      nextCursor: string | null;
+    }>();
+    expect(first.items.map((item) => item.providerPaymentId)).toEqual(["pay_eleventh"]);
+    expect(first.nextCursor).toBe("pay_eleventh");
+    const second = (await getExceptions(`?limit=1&cursor=${first.nextCursor ?? ""}`)).json<{
+      items: { providerPaymentId: string }[];
+      nextCursor: string | null;
+    }>();
+    expect(second.items.map((item) => item.providerPaymentId)).toEqual(["pay_tenth"]);
+    expect(second.nextCursor).toBeNull();
+  });
 });

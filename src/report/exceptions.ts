@@ -46,6 +46,8 @@ export interface ExceptionReport {
   day: string | null;
   lastReconciledAt: Date | null;
   items: ExceptionItem[];
+  /** Cursor for the next page, or null on the last page and in full reports. */
+  nextCursor: string | null;
 }
 
 export function isException(item: ExceptionItem): boolean {

@@ -188,6 +188,7 @@ describe("loadExceptionReport", () => {
       day: null,
       lastReconciledAt: RUN_AT,
       items: [AMBIGUOUS, ANOMALY, DUPLICATE, LATE, OUTDATED, PARTIAL, UNMATCHED, WAITING],
+      nextCursor: null,
     });
   });
 
@@ -234,6 +235,54 @@ describe("loadExceptionReport", () => {
       day: null,
       lastReconciledAt: null,
       items: [],
+      nextCursor: null,
     });
+  });
+
+  it("pages through exceptions with a cursor, skipping clean matches", async () => {
+    await seed();
+    const first = await loadExceptionReport({ pool, page: { limit: 3 } });
+    expect(first.items).toEqual([AMBIGUOUS, ANOMALY, DUPLICATE]);
+    expect(first.nextCursor).toBe("pay_dup");
+    const second = await loadExceptionReport({ pool, page: { limit: 3, after: "pay_dup" } });
+    expect(second.items).toEqual([LATE, OUTDATED, PARTIAL]);
+    expect(second.nextCursor).toBe("pay_partial");
+    const last = await loadExceptionReport({ pool, page: { limit: 3, after: "pay_partial" } });
+    expect(last.items).toEqual([UNMATCHED, WAITING]);
+    expect(last.nextCursor).toBeNull();
+  });
+
+  it("returns no next cursor when the last page is exactly full", async () => {
+    await seed();
+    const page = await loadExceptionReport({ pool, page: { limit: 2, after: "pay_partial" } });
+    expect(page.items).toEqual([UNMATCHED, WAITING]);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it("combines paging with the day filter", async () => {
+    await seed();
+    const page = await loadExceptionReport({
+      pool,
+      day: parseReportDay("2026-10-10"),
+      page: { limit: 10, after: "pay_outdated" },
+    });
+    expect(page.items).toEqual([PARTIAL, WAITING]);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it("agrees with the full report at every page size", async () => {
+    await seed();
+    const full = await loadExceptionReport({ pool });
+    for (const limit of [1, 2, 5, 100]) {
+      const collected: ExceptionItem[] = [];
+      let after: string | undefined;
+      for (;;) {
+        const page = await loadExceptionReport({ pool, page: { limit, after } });
+        collected.push(...page.items);
+        if (page.nextCursor === null) break;
+        after = page.nextCursor;
+      }
+      expect(collected).toEqual(full.items);
+    }
   });
 });

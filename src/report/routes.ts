@@ -33,6 +33,30 @@ function requestedDay(query: unknown): ReportDay | null | undefined {
   }
 }
 
+const DEFAULT_LIMIT = 100;
+const MAX_LIMIT = 500;
+const MAX_CURSOR_LENGTH = 64; // FakePay payment IDs are at most 64 characters.
+const WHOLE_NUMBER = /^\d{1,3}$/;
+
+/** Returns the page size, or undefined when invalid. */
+function requestedLimit(query: unknown): number | undefined {
+  const limit = (query as { limit?: unknown }).limit;
+  if (limit === undefined) return DEFAULT_LIMIT;
+  if (typeof limit !== "string" || !WHOLE_NUMBER.test(limit)) return undefined;
+  const value = Number(limit);
+  return value >= 1 && value <= MAX_LIMIT ? value : undefined;
+}
+
+/** Returns the cursor, null for the first page, or undefined when invalid. */
+function requestedCursor(query: unknown): string | null | undefined {
+  const cursor = (query as { cursor?: unknown }).cursor;
+  if (cursor === undefined) return null;
+  if (typeof cursor !== "string" || cursor.length < 1 || cursor.length > MAX_CURSOR_LENGTH) {
+    return undefined;
+  }
+  return cursor;
+}
+
 export function exceptionsRoutes(app: FastifyInstance, options: ExceptionsOptions): void {
   app.get("/exceptions", async (request, reply) => {
     if (!hasValidToken(request.headers.authorization, options.config.reportApiToken)) {
@@ -45,8 +69,23 @@ export function exceptionsRoutes(app: FastifyInstance, options: ExceptionsOption
         message: "day must be a calendar date as YYYY-MM-DD",
       });
     }
+    const limit = requestedLimit(request.query);
+    if (limit === undefined) {
+      return reply.code(400).send({
+        status: "invalid_request",
+        message: `limit must be a whole number from 1 to ${String(MAX_LIMIT)}`,
+      });
+    }
+    const cursor = requestedCursor(request.query);
+    if (cursor === undefined) {
+      return reply.code(400).send({
+        status: "invalid_request",
+        message: `cursor must be 1 to ${String(MAX_CURSOR_LENGTH)} characters`,
+      });
+    }
+    const page = cursor === null ? { limit } : { limit, after: cursor };
     const report = await loadExceptionReport(
-      day === null ? { pool: options.pool } : { pool: options.pool, day },
+      day === null ? { pool: options.pool, page } : { pool: options.pool, day, page },
     );
     // The report holds payer names and amounts: never store it in a cache.
     return reply.header("Cache-Control", "no-store").send(report);

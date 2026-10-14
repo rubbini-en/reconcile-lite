@@ -27,6 +27,7 @@ const report: ExceptionReport = {
   generatedAt: new Date("2026-10-13T12:00:00Z"),
   day: "2026-10-10",
   lastReconciledAt: new Date("2026-10-13T09:00:00Z"),
+  nextCursor: null,
   items: [
     item("pay_ambiguous", {
       status: "ambiguous",

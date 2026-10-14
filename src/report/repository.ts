@@ -28,6 +28,9 @@ interface PaymentReportRow {
 
 // A payment's day is its settlement time or, before settlement, the time of
 // its first event. Candidates are listed in their stored (numeric ID) order.
+// The exception filter mirrors isException() so that a page holds exactly
+// `limit` exceptions; isException() is still applied afterwards as the
+// definition of record. Paging is keyset-based on the payment ID.
 const PAYMENTS_QUERY = `
   WITH dated_payments AS (
     SELECT p.*,
@@ -52,8 +55,15 @@ const PAYMENTS_QUERY = `
   FROM dated_payments p
   LEFT JOIN reconciliation_results r ON r.payment_id = p.id
   LEFT JOIN orders o ON o.id = r.order_id
-  WHERE $1::timestamptz IS NULL OR (p.activity_at >= $1 AND p.activity_at < $2)
-  ORDER BY p.provider_payment_id COLLATE "C"`;
+  WHERE ($1::timestamptz IS NULL OR (p.activity_at >= $1 AND p.activity_at < $2))
+    AND ($3::text IS NULL OR p.provider_payment_id COLLATE "C" > $3)
+    AND (p.settled_at IS NULL
+         OR r.status IS DISTINCT FROM 'matched'
+         OR (p.refunded_minor > 0 AND p.refunded_minor < p.amount_minor)
+         OR cardinality(p.anomalies) > 0
+         OR (r.payment_id IS NOT NULL AND p.updated_at IS DISTINCT FROM r.payment_updated_at))
+  ORDER BY p.provider_payment_id COLLATE "C"
+  LIMIT $4`;
 
 function exceptionStatus(row: PaymentReportRow): ExceptionStatus {
   if (row.settled_at === null) return "awaiting_settlement";
@@ -82,9 +92,17 @@ function toItem(row: PaymentReportRow): ExceptionItem {
   };
 }
 
+export interface ReportPage {
+  limit: number;
+  /** Provider payment ID of the last item on the previous page. */
+  after?: string | undefined;
+}
+
 export interface ReportOptions {
   pool: pg.Pool;
   day?: ReportDay;
+  /** Omitted: every exception (the CLI report). */
+  page?: ReportPage;
   now?: () => Date;
 }
 
@@ -92,6 +110,7 @@ export interface ReportOptions {
 export async function loadExceptionReport({
   pool,
   day,
+  page,
   now = () => new Date(),
 }: ReportOptions): Promise<ExceptionReport> {
   const client = await pool.connect();
@@ -100,16 +119,22 @@ export async function loadExceptionReport({
     const payments = await client.query<PaymentReportRow>(PAYMENTS_QUERY, [
       day?.start ?? null,
       day?.end ?? null,
+      page?.after ?? null,
+      // One extra row tells whether another page exists.
+      page === undefined ? null : page.limit + 1,
     ]);
     const lastRun = await client.query<{ last_reconciled_at: Date | null }>(
       "SELECT max(reconciled_at) AS last_reconciled_at FROM reconciliation_results",
     );
     await client.query("COMMIT");
+    const hasMore = page !== undefined && payments.rows.length > page.limit;
+    const items = payments.rows.slice(0, page?.limit).map(toItem).filter(isException);
     const report = {
       generatedAt: now(),
       day: day?.day ?? null,
       lastReconciledAt: lastRun.rows[0]?.last_reconciled_at ?? null,
-      items: payments.rows.map(toItem).filter(isException),
+      items,
+      nextCursor: hasMore ? (items.at(-1)?.providerPaymentId ?? null) : null,
     };
     client.release();
     return report;
