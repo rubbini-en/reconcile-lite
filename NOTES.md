@@ -106,6 +106,12 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   seeded random order with redeliveries and re-signed retries, and refuses any
   URL that is not 127.0.0.1, localhost or [::1]. Its xorshift32 generator
   (Marsaglia, 2003) is for shuffling only, never for anything security-related.
+- **CI** (`.github/workflows/ci.yml`) runs lint, format check, typecheck,
+  build, unit and integration tests on every push and pull request, against a
+  Postgres service with throwaway credentials. It has read-only repository
+  permission and uses no secrets. Actions are pinned by major tag (`@v4`), not
+  by commit SHA.
+- **`npm start`** runs the compiled server (`dist/server.js`); build first.
 
 ## Open questions
 
@@ -113,8 +119,9 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
    amounts at 2^53 − 1 because `JSON.parse` loses precision above it, so a
    validated safe-integer `number` is enough and avoids `bigint` JSON
    serialization problems. Proposed; needs owner OK.
-2. **Postgres image tag.** `postgres:17-alpine` is a floating tag. Pin to an
-   exact version or digest before CI.
+2. ~~**Postgres image tag.**~~ Resolved in milestone 4: pinned to
+   `postgres:17.11-alpine` in Compose and CI (the version the local
+   `17-alpine` image reported). Not pinned by digest.
 3. **Unsettled `refunded_minor` across currencies.** Before settlement, refunds
    in different currencies are summed into one number (flagged with
    `refund_currency_mismatch`). Unsettled payments are never reconciled, and the
@@ -136,7 +143,14 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
 8. **`.env.example` is still missing.** Writing it was blocked by a local
    permission rule in Step 0; the owner needs to create it or allow the write.
    Variables: `DATABASE_URL`, `FAKEPAY_WEBHOOK_SECRET`, `REPORT_API_TOKEN`,
-   `PORT`.
+   `PORT`. Still blocked in milestone 4; the README lists the variables
+   instead.
+9. **Pin GitHub Actions by commit SHA?** `actions/checkout@v4` and
+   `actions/setup-node@v4` are mutable tags. Pinning to SHAs needs looking them
+   up on GitHub, which this session's rules did not allow.
+10. **The CI workflow has never run on GitHub.** Its steps were run locally in
+    order; the service container, the npm cache and the runner image were not
+    exercised.
 
 ## Process log
 
@@ -174,3 +188,8 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   network errors that aborted the run. A full local run (server, simulate,
   import twice, reconcile, report, API with and without the token) was done
   against `reconcile_test`; the server log contained neither secret.
+- Milestone 4: README and CI by the integrator. Every command in the README's
+  local walkthrough was run against `reconcile_test` (migrate, `npm start`,
+  simulate, import, reconcile, report as Markdown and CSV, the API with the
+  token); the server log contained neither secret. The CI steps were run
+  locally in order; the workflow itself was not run.
