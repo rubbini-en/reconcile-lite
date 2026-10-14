@@ -2,7 +2,8 @@
 # database bound to localhost; override them through .env.
 services:
   postgres:
-    image: postgres:17-alpine
+    # Exact version so local runs and CI use the same server.
+    image: postgres:17.11-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-reconcile}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reconcile_local}
