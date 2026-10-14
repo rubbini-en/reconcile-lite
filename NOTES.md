@@ -112,6 +112,13 @@ UNIQUE`). A repeated `id` with an identical body is acknowledged with `200`
   permission and uses no secrets. Actions are pinned by major tag (`@v4`), not
   by commit SHA.
 - **`npm start`** runs the compiled server (`dist/server.js`); build first.
+- **CI commit tags.** The tip commit of every pushed branch must contain
+  `[ci]` or `[skip ci]` (owner decision). A versioned `pre-push` hook in
+  `.githooks/` enforces it; `npm install` (`prepare`) points `core.hooksPath`
+  at it. Only the tip is checked because GitHub reads the skip tag from the
+  head commit. Tags pushes and branch deletions are not checked. The hook runs
+  on the developer's machine only: `git push --no-verify` bypasses it, and
+  GitHub does not enforce the tag server-side.
 
 ## Open questions
 

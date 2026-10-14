@@ -241,6 +241,25 @@ provider. Matching thresholds are fixed in code, only PYG and USD are
 supported, and orders with no payment are not reported. It has not been
 benchmarked on large datasets.
 
+## Contributing
+
+Every push must say whether CI should run. End the last commit message of each
+pushed branch with a tag:
+
+| Tag         | Effect                       | Use it for                     |
+| ----------- | ---------------------------- | ------------------------------ |
+| `[ci]`      | CI runs                      | code, tests, config, workflows |
+| `[skip ci]` | GitHub Actions skips the run | docs and other non-code edits  |
+
+```text
+feat(report): add a currency column [ci]
+docs: fix a typo in the quickstart [skip ci]
+```
+
+A `pre-push` hook in [`.githooks/`](.githooks/pre-push) rejects a push whose
+branch tip has neither tag. `npm install` enables it by setting
+`core.hooksPath`. Commits use [Conventional Commits](https://www.conventionalcommits.org/).
+
 ## License
 
 [MIT](LICENSE) © 2026 Eduardo Rubbini
